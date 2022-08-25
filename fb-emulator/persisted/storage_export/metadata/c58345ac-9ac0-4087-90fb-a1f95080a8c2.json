@@ -1,0 +1,19 @@
+{
+  "name": "VkLWXvcuw16pHfzhVfME/test2@email.com.jpg",
+  "bucket": "first-9b59f.appspot.com",
+  "metageneration": 1,
+  "generation": 1661380639240,
+  "contentType": "application/octet-stream",
+  "storageClass": "STANDARD",
+  "contentDisposition": "inline",
+  "customMetadata": {},
+  "downloadTokens": [
+    "0dfac7ec-7075-447d-8700-823ffc0ab428"
+  ],
+  "etag": "oZPg6iylMDRLDEzO317+G0Fp6ZA",
+  "timeCreated": "2022-08-24T22:37:19.240Z",
+  "updated": "2022-08-24T22:37:19.240Z",
+  "size": 20264,
+  "md5Hash": "L/FV8vl8ma9/unlShXSHnQ==",
+  "crc32c": "774049269"
+}

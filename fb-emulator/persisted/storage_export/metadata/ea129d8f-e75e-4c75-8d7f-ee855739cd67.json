@@ -1,0 +1,19 @@
+{
+  "name": "defaultUser.png",
+  "bucket": "first-9b59f.appspot.com",
+  "metageneration": 1,
+  "generation": 1661380393434,
+  "contentType": "image/png",
+  "storageClass": "STANDARD",
+  "contentDisposition": "inline",
+  "customMetadata": {},
+  "downloadTokens": [
+    "fc1eca0c-ce2a-493a-b497-0abe82b01e35"
+  ],
+  "etag": "Q+2IcNHHWb+A6FT5nqIsVl4V0Yw",
+  "timeCreated": "2022-08-24T22:33:13.434Z",
+  "updated": "2022-08-24T22:33:13.434Z",
+  "size": 1426,
+  "md5Hash": "MEkYUmroElmhEDGw+MdhoA==",
+  "crc32c": "1468979032"
+}
