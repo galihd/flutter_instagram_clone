@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_instagram_clone/Getx/gallery_picker_controller.dart';
 import 'package:get/get.dart';

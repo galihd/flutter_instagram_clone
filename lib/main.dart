@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
       initialRoute: "/",
       routes: {
         "/": (context) => Obx(() {
-              return appUserController.isAuthenticated.isTrue ? MainNavigation() : const AuthScreen();
+              return appUserController.isAuthenticated.isTrue ? const MainNavigation() : const AuthScreen();
             }),
         "/login": (context) => const AuthScreen(),
       },

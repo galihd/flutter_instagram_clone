@@ -16,6 +16,7 @@ class CreatePostDetails extends GetView<GalleryPickerController> {
   final navigationController = Get.find<NavigationController>();
 
   void createPostRequest(BuildContext context) async {
+    void redirectToHome() => Navigator.of(context, rootNavigator: true).pushReplacementNamed("/");
     List<String> fileUrls =
         (await Future.wait(controller.selectedFiles.map((element) => element.file).toList())).map((e) => e!.path).toList();
     Post postData = Post("", fileUrls, captionController.text, appUserController.appUser.value.appUserId,
@@ -23,7 +24,7 @@ class CreatePostDetails extends GetView<GalleryPickerController> {
 
     controller.selectFileHandler(controller.assets[0]);
     feedsController.createPostRequest(postData);
-    navigationController.redirectToHome();
+    redirectToHome();
   }
 
   @override

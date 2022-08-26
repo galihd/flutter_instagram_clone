@@ -20,8 +20,8 @@ class FirebaseAppStorage {
     List<Future<String>> fileUrls = postData.fileUrls.asMap().entries.map((url) async {
       int index = url.key;
       Reference uploadRef = identical(postData.postType, PostType.post)
-          ? storage.ref('${userPostRef(postData).fullPath}/${index}.jpg')
-          : storage.ref('${userPostRef(postData).fullPath}/${index}.mp4');
+          ? storage.ref('${userPostRef(postData).fullPath}/$index.jpg')
+          : storage.ref('${userPostRef(postData).fullPath}/$index.mp4');
       // get image url from filesystem
       File file = File(url.value);
       // upload it
@@ -37,4 +37,7 @@ class FirebaseAppStorage {
     await uploadRef.putFile(newAvatar);
     return uploadRef.fullPath;
   }
+
+  static void deletePost(Post postData) =>
+      postData.fileUrls.asMap().entries.forEach((element) => storage.ref().child(element.value).delete());
 }

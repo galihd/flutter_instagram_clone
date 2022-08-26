@@ -1,6 +1,3 @@
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +7,6 @@ import 'package:flutter_instagram_clone/components/auth_input.dart';
 import 'package:flutter_instagram_clone/components/custom_loading_indicator.dart';
 import 'package:flutter_instagram_clone/models/app_user.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({Key? key, required this.switchForm}) : super(key: key);

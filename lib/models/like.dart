@@ -4,8 +4,7 @@ import 'package:flutter_instagram_clone/models/app_user.dart';
 import 'package:flutter_instagram_clone/models/comment.dart';
 
 class Like {
-  Like(this.likeId, this.targetType, this.targetId, this.appUserId,
-      this.appUser);
+  Like(this.likeId, this.targetType, this.targetId, this.appUserId, this.appUser);
   String likeId;
   TargetType targetType;
   String targetId;
@@ -14,28 +13,25 @@ class Like {
 
   String get getLikeId => likeId;
 
-  Like.fromFireStore(
-      DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options)
+  Like.fromFireStore(DocumentSnapshot<Map<String, dynamic>> snapshot, SnapshotOptions? options)
       : likeId = snapshot.id,
-        targetType = snapshot.data()?['targetType'],
+        targetType = TargetType.values.byName(snapshot.data()?['targetType']),
         targetId = snapshot.data()?['targetId'],
         appUserId = snapshot.data()?['appUserId'];
 
   static Map<String, dynamic> toFireStore(Like value, SetOptions? options) => {
         'likeId': value.likeId,
-        'targetType': value.targetType,
+        'targetType': value.targetType.name,
         'targetId': value.targetId,
         'appUserId': value.appUser!.appUserId
       };
 
-  static Future<Like> withDownloadableUrl(
-          DocumentSnapshot<Like> snapshot) async =>
-      Like(
-          snapshot.data()!.likeId,
-          snapshot.data()!.targetType,
-          snapshot.data()!.targetId,
-          snapshot.data()!.appUserId,
-          await AppUsersRepo.findAppUserById(snapshot.data()!.appUserId));
+  static Future<Like> withDownloadableUrl(DocumentSnapshot<Like> snapshot) async => Like(
+      snapshot.data()!.likeId,
+      snapshot.data()!.targetType,
+      snapshot.data()!.targetId,
+      snapshot.data()!.appUserId,
+      await AppUsersRepo.findAppUserById(snapshot.data()!.appUserId));
 
   set setLikeId(String newLikeId) {
     likeId = newLikeId;

@@ -1,25 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_instagram_clone/Getx/appuser_controller.dart';
-import 'package:flutter_instagram_clone/Getx/navigation_controller.dart';
 import 'package:flutter_instagram_clone/app_navigations/constants.dart';
 import 'package:flutter_instagram_clone/app_navigations/stacknavigator_home.dart';
 import 'package:flutter_instagram_clone/app_navigations/stacknavigator_profile.dart';
 import 'package:flutter_instagram_clone/components/custom_snackbar.dart';
 import 'package:get/get.dart';
-import 'package:intl/date_symbol_data_local.dart';
 
-class MainNavigation extends GetView<NavigationController> {
-  MainNavigation({Key? key}) : super(key: key);
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({Key? key}) : super(key: key);
 
+  @override
+  State<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends State<MainNavigation> {
   final userController = Get.find<AppUserController>();
+  MainNavRoutes currentBottomTab = MainNavRoutes.home;
+  late bool shouldPop = false;
+
+  final navigatorKeys = {
+    MainNavRoutes.home: GlobalKey<NavigatorState>(),
+    MainNavRoutes.explore: GlobalKey<NavigatorState>(),
+    MainNavRoutes.reels: GlobalKey<NavigatorState>(),
+    MainNavRoutes.shop: GlobalKey<NavigatorState>(),
+    MainNavRoutes.profile: GlobalKey<NavigatorState>()
+  };
+
+  void selectTabHandler(int index) {
+    if (MainNavRoutes.values[index] == currentBottomTab) {
+      navigatorKeys[currentBottomTab]!.currentState!.popUntil((route) => route.isFirst);
+    } else {
+      setState(() {
+        currentBottomTab = MainNavRoutes.values[index];
+      });
+    }
+  }
+
+  Future<bool> backButtonHandler() async {
+    final isOnTabFirstRoute = !await navigatorKeys[currentBottomTab]!.currentState!.maybePop();
+    void showSnackbar() {
+      MySnackbar.show(context, "Press once again to exit app", true);
+    }
+
+    if (isOnTabFirstRoute) {
+      if (currentBottomTab != MainNavRoutes.home) {
+        selectTabHandler(0);
+
+        return false;
+      } else if (shouldPop) {
+        return true;
+      } else {
+        showSnackbar();
+        //shouldpop=true;
+        return false;
+      }
+    } else {
+      print("not on first route");
+    }
+
+    return isOnTabFirstRoute;
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-        onWillPop: () => controller.backButtonHandler(context),
+        onWillPop: backButtonHandler,
         child: SafeArea(
             child: Obx(() => Scaffold(
                   body: IndexedStack(
-                    index: controller.currentBottomTab.value.index,
+                    index: currentBottomTab.index,
                     children: [
                       HomeStack(navigatorKey: navigatorKeys[MainNavRoutes.home]!),
                       ProfileStack(navigatorKey: navigatorKeys[MainNavRoutes.explore]!),
@@ -51,8 +100,8 @@ class MainNavigation extends GetView<NavigationController> {
                                 ),
                           label: 'Profile')
                     ],
-                    currentIndex: controller.currentBottomTab.value.index,
-                    onTap: controller.selectTabHandler,
+                    currentIndex: currentBottomTab.index,
+                    onTap: selectTabHandler,
                   ),
                 ))));
   }

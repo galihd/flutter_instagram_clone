@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_instagram_clone/Firebase/FireStore/posts_repo.dart';
 import 'package:flutter_instagram_clone/Getx/appuser_controller.dart';
+import 'package:flutter_instagram_clone/Getx/feeds_controller.dart';
 import 'package:flutter_instagram_clone/models/comment.dart';
 import 'package:flutter_instagram_clone/models/post.dart';
 import 'package:get/get.dart';
@@ -18,14 +18,14 @@ class CommentScreen extends StatefulWidget {
 class _CommentScreenState extends State<CommentScreen> {
   final TextEditingController commentController = TextEditingController();
   final userController = Get.find<AppUserController>();
+  final feedsController = Get.find<FeedsController>();
   bool isRefreshing = true;
   bool isEmpty = true;
-  Comment? createRequest;
   late List<Comment> postComments;
 
   Future<void> getAllPostComments() async {
     if (widget.postData.commentCount > 0) {
-      PostsRepo.findAllCommentsByAttribute("targetId", widget.postData.postId).then((value) => setState((() {
+      return feedsController.loadPostComments(widget.postData).then((value) => setState((() {
             postComments = value;
             isRefreshing = false;
           })));
@@ -49,13 +49,9 @@ class _CommentScreenState extends State<CommentScreen> {
         Timestamp.fromDate(DateTime.now()),
         null);
     setState(() {
-      createRequest = commentData;
+      feedsController.createNewCommentRequest(commentData);
       postComments.insert(0, commentData);
     });
-    PostsRepo.addComment(createRequest!).then((response) => setState(() {
-          createRequest = null;
-          postComments[0] = response;
-        }));
   }
 
   @override
@@ -91,9 +87,11 @@ class _CommentScreenState extends State<CommentScreen> {
                   )
                 : ListView.builder(
                     itemCount: postComments.length,
-                    itemBuilder: (context, index) => CommentCard(
-                      commentData: postComments[index],
-                      isSending: identical(createRequest, postComments[index]),
+                    itemBuilder: (context, index) => Obx(
+                      () => CommentCard(
+                        commentData: postComments[index],
+                        isSending: identical(feedsController.createCommentRequest.value, postComments[index]),
+                      ),
                     ),
                   ),
         bottomNavigationBar: Container(

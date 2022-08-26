@@ -39,9 +39,11 @@ class PostsRepo {
     return findPostById(docRef.id);
   }
 
-  static Future<void> deletePostById(String postId) => FirebaseCollections.postsCollection.doc(postId).delete().then((e) {
+  static Future<void> deletePostById(String postId) => FirebaseCollections.postsCollection.doc(postId).get().then((e) {
+        // FirebaseAppStorage.deletePost(e.data()!);
         deleteAllCommentsByTargetId(postId);
-        deleteAllLikesByTargetId(postId);
+        // deleteAllLikesByTargetId(postId);
+        // FirebaseCollections.postsCollection.doc(postId).delete();
       });
 
   // COMMENTS SECTION
@@ -68,25 +70,34 @@ class PostsRepo {
           .get()
           .then((qresult) => qresult.docs.map(Comment.withDownloadableUrl)));
 
-  static void deleteCommentById(String commentId) => FirebaseCollections.commentsCollection.doc(commentId).delete();
+  static void deleteComment(Comment comment) => FirebaseCollections.commentsCollection.doc(comment.commentId).delete().then(
+      (value) => comment.targetType == TargetType.post
+          ? FirebaseCollections.postsCollection.doc(comment.targetId).update({'commentCount': FieldValue.increment(-1)})
+          : FirebaseCollections.commentsCollection.doc(comment.targetId).update({'commentCount': FieldValue.increment(-1)}));
 
-  static Future<void> deleteAllCommentsByTargetId(String targetId) {
+  static Future<void> deleteAllCommentsByTargetId(String targetId) async {
     var batch = FirebaseCollections.db.batch();
-    FirebaseCollections.commentsCollection
-        .where("targetId", isEqualTo: targetId)
-        .get()
-        .then((qresult) => qresult.docs.map((e) {
-              deleteAllLikesByTargetId(e.id);
-              batch.delete(e.reference);
-              // delete all replies and its likes
-              if (e.data().targetType == TargetType.comment) {
-                deleteAllCommentsByTargetId(e.id);
-              }
-            }));
+
+    await FirebaseCollections.commentsCollection.where("targetId", isEqualTo: targetId).get().then((qresult) {
+      for (var document in qresult.docs) {
+        deleteAllLikesByTargetId(document.id);
+        batch.delete(document.reference);
+        // delete all replies and its likes
+        if (document.data().targetType == TargetType.comment) {
+          deleteComment(document.data());
+        }
+      }
+    });
     return batch.commit();
   }
 
   // Likes section
+  static Future<Like?> findLikeByTargetIdAndUserId(String targetId, String userId) => FirebaseCollections.likesCollection
+      .where('targetId', isEqualTo: targetId)
+      .where('appUserId', isEqualTo: userId)
+      .get()
+      .then((qresult) => qresult.docs.isNotEmpty ? Like.withDownloadableUrl(qresult.docs[0]) : null);
+
   static Future<Like> addLike(Like likeData) async {
     var docRef = FirebaseCollections.likesCollection.doc();
     await docRef.set(likeData);
@@ -101,14 +112,18 @@ class PostsRepo {
     return likeData;
   }
 
-  static void deleteLikeById(String likeId) => FirebaseCollections.likesCollection.doc(likeId).delete();
+  static Future<void> deleteLike(Like like) =>
+      FirebaseCollections.likesCollection.doc(like.likeId).delete().then((_) => like.targetType == TargetType.post
+          ? FirebaseCollections.postsCollection.doc(like.targetId).update({'likesCount': FieldValue.increment(-1)})
+          : FirebaseCollections.commentsCollection.doc(like.targetId).update({'likesCount': FieldValue.increment(-1)}));
 
-  static Future<void> deleteAllLikesByTargetId(String targetId) {
+  static Future<void> deleteAllLikesByTargetId(String targetId) async {
     var batch = FirebaseCollections.db.batch();
-    FirebaseCollections.likesCollection
-        .where("tagetId", isEqualTo: targetId)
-        .get()
-        .then((qresult) => qresult.docs.map((element) => batch.delete(element.reference)));
+    await FirebaseCollections.likesCollection.where("targetId", isEqualTo: targetId).get().then((qresult) {
+      for (var document in qresult.docs) {
+        batch.delete(document.reference);
+      }
+    });
     return batch.commit();
   }
 }

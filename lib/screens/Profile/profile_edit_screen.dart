@@ -130,7 +130,10 @@ class ProfileEditGalleryScreen extends GetView<GalleryPickerController> {
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
-            onPressed: () => Navigator.pop(context, controller.selectedFiles[0]),
+            onPressed: () {
+              controller.selectFileHandler(controller.assets[0]);
+              Navigator.pop(context, controller.selectedFiles[0]);
+            },
           )
         ],
       ),

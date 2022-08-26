@@ -1,12 +1,16 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_instagram_clone/Firebase/FireStore/posts_repo.dart';
+import 'package:flutter_instagram_clone/Getx/appuser_controller.dart';
+import 'package:flutter_instagram_clone/Getx/feeds_controller.dart';
 import 'package:flutter_instagram_clone/app_navigations/constants.dart';
 import 'package:flutter_instagram_clone/components/expandable_text.dart';
-import 'package:flutter_instagram_clone/models/app_user.dart';
+import 'package:flutter_instagram_clone/components/scale_animated.dart';
+import 'package:flutter_instagram_clone/models/comment.dart';
+import 'package:flutter_instagram_clone/models/like.dart';
 import 'package:flutter_instagram_clone/models/post.dart';
-import 'package:http/http.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -54,40 +58,38 @@ class PostItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [PostHeader(postOwner: postData.appUser!), PostBody(postData: postData)],
+        children: [PostHeader(postData: postData), PostBody(postData: postData)],
       );
 }
 
 class PostHeader extends StatelessWidget {
-  const PostHeader({Key? key, required this.postOwner}) : super(key: key);
-  final AppUser postOwner;
+  PostHeader({Key? key, required this.postData}) : super(key: key);
+  final Post postData;
+  final userController = Get.find<AppUserController>();
+  final feedsController = Get.find<FeedsController>();
   @override
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.max,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: (() => Navigator.pushNamed(context, MainStackRoutes.profile, arguments: postOwner.appUserId)),
+            onTap: (() => Navigator.pushNamed(context, MainStackRoutes.profile, arguments: postData.appUserId)),
             child: Flex(
               direction: Axis.horizontal,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: NetworkImage(postOwner.avatarUrl),
+                  backgroundImage: NetworkImage(postData.appUser!.avatarUrl),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(left: 10),
-                  child: Text(postOwner.username),
+                  child: Text(postData.appUser!.username),
                 )
               ],
             ),
           ),
-          IconButton(
-              onPressed: () {
-                print("open drawer");
-              },
-              icon: const Icon(Icons.more_horiz))
+          IconButton(onPressed: () => showBottomDrawer(context), icon: const Icon(Icons.more_horiz))
         ],
       );
 
@@ -115,69 +117,136 @@ class PostHeader extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.max,
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [],
-              )
+                children: [
+                  circularDrawerButton(context, Icons.share, "Share", () => null),
+                  circularDrawerButton(context, Icons.link, "Link", () => null),
+                  circularDrawerButton(context, Icons.qr_code_scanner_rounded, "QR code", () => null),
+                  if (postData.appUserId != userController.appUser.value.appUserId)
+                    circularDrawerButton(context, CupertinoIcons.exclamationmark_bubble, "Report", () => null),
+                ],
+              ),
+              Row(children: [
+                Expanded(
+                    child: Divider(
+                  color: Colors.grey.shade600,
+                ))
+              ]),
+              if (postData.appUserId == userController.appUser.value.appUserId) ...[
+                GestureDetector(
+                    onTap: () {},
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('Post to other apps...'))),
+                GestureDetector(
+                    onTap: () {},
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('Pin to your profile'))),
+                GestureDetector(
+                    onTap: () {}, child: Container(padding: const EdgeInsets.all(10), child: const Text('Archive'))),
+                GestureDetector(
+                    onTap: () => feedsController.deletePost(postData),
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('Delete'))),
+                GestureDetector(
+                    onTap: () {}, child: Container(padding: const EdgeInsets.all(10), child: const Text('Edit'))),
+                GestureDetector(
+                    onTap: () {},
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('Turn off commenting'))),
+              ] else ...[
+                GestureDetector(
+                    onTap: () {},
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('Add to favorites'))),
+                GestureDetector(
+                    onTap: () {}, child: Container(padding: const EdgeInsets.all(10), child: const Text('Hide'))),
+                GestureDetector(
+                    onTap: () {},
+                    child: Container(padding: const EdgeInsets.all(10), child: const Text('About this account'))),
+                GestureDetector(
+                    onTap: () {}, child: Container(padding: const EdgeInsets.all(10), child: const Text('Unfollow'))),
+              ]
             ])));
   }
+
+  Widget circularDrawerButton(BuildContext context, IconData icon, String label, Function()? onPressed) => TextButton(
+        onPressed: onPressed,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(width: 0.5),
+              ),
+              child: Icon(
+                icon,
+                color: Theme.of(context).textTheme.bodyMedium!.color,
+              ),
+            ),
+            Text(label, style: Theme.of(context).textTheme.bodyMedium)
+          ],
+        ),
+      );
 }
 
 class PostBody extends StatefulWidget {
   const PostBody({Key? key, required this.postData}) : super(key: key);
 
+  final Post postData;
   @override
   State<PostBody> createState() => _PostBodyState();
-  final Post postData;
 }
 
 class _PostBodyState extends State<PostBody> {
-  int current = 0;
+  int activeIndex = 0;
+  late bool isAnimating = false;
+  Like? like;
   final CarouselController carouselController = CarouselController();
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          widget.postData.postType == PostType.post
-              ? widget.postData.fileUrls.length > 1
-                  ? CarouselSlider(
-                      items: widget.postData.fileUrls
-                          .map((e) => GestureDetector(
-                              onTap: () {},
-                              child: Image.network(
-                                e,
-                                fit: BoxFit.cover,
-                              )))
-                          .toList(),
-                      carouselController: carouselController,
-                      options: CarouselOptions(
-                        viewportFraction: 1,
-                        height: 450,
-                        onPageChanged: (index, reason) => setState(() => current = index),
-                      ))
-                  : GestureDetector(
-                      onTap: () {},
-                      child: Image.network(
-                        widget.postData.fileUrls[0],
-                        height: 450,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-              : Text("show vedeos"),
-          PostDetails(postData: widget.postData, activeIndicatorIndex: current, carouselController: carouselController)
-        ],
-      );
-}
-
-class PostDetails extends StatelessWidget {
-  const PostDetails({Key? key, required this.postData, required this.activeIndicatorIndex, required this.carouselController})
-      : super(key: key);
-  final Post postData;
-  final int activeIndicatorIndex;
-  final CarouselController carouselController;
-
-  void showComments(BuildContext context) {
-    Navigator.pushNamed(context, MainStackRoutes.comments, arguments: postData);
+  final userController = Get.find<AppUserController>();
+  void showComments() {
+    Navigator.pushNamed(context, MainStackRoutes.comments, arguments: widget.postData);
   }
 
-  DateTime postCreatedDate() => DateTime.fromMillisecondsSinceEpoch(postData.createdAt.millisecondsSinceEpoch);
+  void likePost() async {
+    if (!isAnimating) {
+      if (like == null) {
+        widget.postData.likesCount++;
+        Like likeData = Like(
+          '',
+          TargetType.post,
+          widget.postData.postId,
+          widget.postData.appUserId,
+          widget.postData.appUser,
+        );
+        likeData = await PostsRepo.addLike(likeData);
+        setState(() {
+          isAnimating = !isAnimating;
+          like = likeData;
+        });
+      } else {
+        setState(() {
+          isAnimating = !isAnimating;
+        });
+      }
+    }
+  }
+
+  void disLikePost() async {
+    // deleteLike
+    await PostsRepo.deleteLike(like!);
+    setState(() {
+      like = null;
+    });
+    widget.postData.likesCount--;
+  }
+
+  Future<void> getLike() =>
+      PostsRepo.findLikeByTargetIdAndUserId(widget.postData.postId, userController.appUser.value.appUserId)
+          .then((value) => setState(() => like = value));
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    getLike();
+    super.initState();
+  }
+
+  DateTime postCreatedDate() => DateTime.fromMillisecondsSinceEpoch(widget.postData.createdAt.millisecondsSinceEpoch);
   String formattedDate() => (DateTime.now().millisecondsSinceEpoch - postCreatedDate().millisecondsSinceEpoch) >
           (1000 * 60 * 60 * 24)
       ? (DateTime.now().millisecondsSinceEpoch - postCreatedDate().millisecondsSinceEpoch) < (1000 * 60 * 60 * 24 * 7)
@@ -189,6 +258,53 @@ class PostDetails extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // POST IMAGE/THUMBNAIL
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              widget.postData.postType == PostType.post
+                  ? widget.postData.fileUrls.length > 1
+                      ? CarouselSlider(
+                          items: widget.postData.fileUrls
+                              .map((e) => GestureDetector(
+                                  onTap: () {},
+                                  onDoubleTap: likePost,
+                                  child: Image.network(
+                                    e,
+                                    fit: BoxFit.cover,
+                                  )))
+                              .toList(),
+                          carouselController: carouselController,
+                          options: CarouselOptions(
+                            viewportFraction: 1,
+                            height: 450,
+                            onPageChanged: (index, reason) => setState(() => activeIndex = index),
+                          ))
+                      : GestureDetector(
+                          onTap: () {},
+                          onDoubleTap: likePost,
+                          child: Image.network(
+                            widget.postData.fileUrls[0],
+                            height: 450,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                  : Text("show vedeos"),
+              Opacity(
+                opacity: isAnimating ? 1 : 0,
+                child: ScaleAnimatedComponent(
+                    isAnimatingState: isAnimating,
+                    endAnimationCallback: () => setState(() => isAnimating = false),
+                    child: const Icon(
+                      Icons.favorite,
+                      size: 100,
+                      color: Colors.white,
+                    )),
+              )
+            ],
+          ),
+          // POST DETAILS
           SizedBox(
             width: double.infinity,
             child: Stack(
@@ -203,8 +319,13 @@ class PostDetails extends StatelessWidget {
                       direction: Axis.horizontal,
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border_outlined)),
-                        IconButton(onPressed: () => showComments(context), icon: const Icon(CupertinoIcons.chat_bubble)),
+                        IconButton(
+                          onPressed: like != null ? disLikePost : likePost,
+                          icon: like == null
+                              ? const Icon(Icons.favorite_border_outlined)
+                              : const Icon(Icons.favorite, color: Colors.red),
+                        ),
+                        IconButton(onPressed: showComments, icon: const Icon(CupertinoIcons.chat_bubble)),
                         IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.paperplane)),
                       ],
                     ),
@@ -212,13 +333,13 @@ class PostDetails extends StatelessWidget {
                   ],
                 ),
                 // DOTS INDICATOR
-                if (postData.fileUrls.length > 1)
+                if (widget.postData.fileUrls.length > 1)
                   Positioned.fill(
                       child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.max,
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    children: postData.fileUrls
+                    children: widget.postData.fileUrls
                         .asMap()
                         .entries
                         .map((entry) => Container(
@@ -230,7 +351,7 @@ class PostDetails extends StatelessWidget {
                                   color: (Theme.of(context).brightness == Brightness.dark
                                           ? Colors.black54
                                           : Colors.grey.shade900)
-                                      .withOpacity(activeIndicatorIndex == entry.key ? 0.9 : 0.4)),
+                                      .withOpacity(activeIndex == entry.key ? 0.9 : 0.4)),
                             ))
                         .toList(),
                   )),
@@ -240,20 +361,20 @@ class PostDetails extends StatelessWidget {
           // CAPTION DETAILS
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
-              child: Text('${postData.likesCount} likes')),
+              child: Text('${widget.postData.likesCount} likes')),
           ExpandableText(
-            text: postData.caption!,
+            text: widget.postData.caption!,
             displayLength: 30,
-            leadingText: postData.appUser!.username,
+            leadingText: widget.postData.appUser!.username,
           ),
-          if (postData.commentCount > 0)
+          if (widget.postData.commentCount > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
               child: GestureDetector(
-                onTap: () => showComments(context),
-                child: postData.commentCount == 1
+                onTap: showComments,
+                child: widget.postData.commentCount == 1
                     ? const Text("View 1 comment")
-                    : Text("View ${postData.commentCount} comments"),
+                    : Text("View all ${widget.postData.commentCount} comments"),
               ),
             ),
 
