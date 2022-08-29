@@ -5,6 +5,7 @@ import 'package:flutter_instagram_clone/app_navigations/stacknavigator_home.dart
 import 'package:flutter_instagram_clone/app_navigations/stacknavigator_profile.dart';
 import 'package:flutter_instagram_clone/components/custom_snackbar.dart';
 import 'package:get/get.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -57,6 +58,13 @@ class _MainNavigationState extends State<MainNavigation> {
     }
 
     return isOnTabFirstRoute;
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    initializeDateFormatting();
+    super.initState();
   }
 
   @override
