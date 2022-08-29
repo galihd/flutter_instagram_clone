@@ -7,10 +7,13 @@ import 'package:flutter_instagram_clone/Firebase/FireStore/posts_repo.dart';
 import 'package:flutter_instagram_clone/Getx/appuser_controller.dart';
 import 'package:flutter_instagram_clone/Getx/feeds_controller.dart';
 import 'package:flutter_instagram_clone/app_navigations/constants.dart';
+import 'package:flutter_instagram_clone/components/video_player_widget.dart';
 import 'package:flutter_instagram_clone/models/app_user.dart';
 import 'package:flutter_instagram_clone/models/follow.dart';
 import 'package:flutter_instagram_clone/models/post.dart';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key, required this.appUserId, required this.showActions}) : super(key: key);
@@ -127,7 +130,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ],
                                           )),
                                       TextButton(
-                                          onPressed: () {},
+                                          onPressed: () => Navigator.pushNamed(
+                                                context,
+                                                MainStackRoutes.profileRelation,
+                                                arguments: ProfileRelationArguments(
+                                                  0,
+                                                  userData,
+                                                  followers,
+                                                  following,
+                                                ),
+                                              ),
                                           child: Column(
                                             children: [
                                               Text(
@@ -143,7 +155,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ],
                                           )),
                                       TextButton(
-                                          onPressed: () {},
+                                          onPressed: () => Navigator.pushNamed(
+                                                context,
+                                                MainStackRoutes.profileRelation,
+                                                arguments: ProfileRelationArguments(
+                                                  1,
+                                                  userData,
+                                                  followers,
+                                                  following,
+                                                ),
+                                              ),
                                           child: Column(
                                             children: [
                                               Text(
@@ -261,9 +282,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     GridView.count(
                         crossAxisCount: 3,
                         children: (isMyProfile ? feedsController.userPosts : userPosts)
-                            .map((e) => GestureDetector(
-                                  onTap: () {},
-                                  child: Image.network(e.fileUrls[0]),
+                            .map((post) => GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      MainStackRoutes.profilePost,
+                                      arguments: PostFeedsArguments(
+                                          userPosts, userPosts.indexWhere((element) => element.postId == post.postId)),
+                                    );
+                                  },
+                                  child: post.postType == PostType.post
+                                      ? Image.network(post.fileUrls[0])
+                                      : Stack(
+                                          children: [
+                                            VideoPlayerWidget(
+                                              // KEY TO PREVENT AUTO PLAY
+                                              key: Key(post.fileUrls[0]),
+                                              videoUrl: post.fileUrls[0],
+                                              autoPlay: false,
+                                            ),
+                                            const Positioned(
+                                                top: 5,
+                                                right: 5,
+                                                child: Icon(
+                                                  Icons.play_arrow,
+                                                  size: 30,
+                                                  color: Colors.white,
+                                                ))
+                                          ],
+                                        ),
                                 ))
                             .toList()),
 
@@ -272,9 +319,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisCount: 3,
                         children: userPosts
                             .where((element) => element.postType == PostType.reels)
-                            .map((e) => GestureDetector(
+                            .map((post) => GestureDetector(
                                   onTap: () {},
-                                  child: Image.network(e.fileUrls[0]),
+                                  child: Stack(
+                                    children: [
+                                      VideoPlayerWidget(
+                                        // KEY TO PREVENT AUTO PLAY
+                                        key: Key(post.fileUrls[0]),
+                                        videoUrl: post.fileUrls[0],
+                                        autoPlay: false,
+                                      ),
+                                      const Positioned(
+                                          top: 5,
+                                          right: 5,
+                                          child: Icon(
+                                            Icons.play_arrow,
+                                            size: 30,
+                                            color: Colors.white,
+                                          ))
+                                    ],
+                                  ),
                                 ))
                             .toList()),
                     // USER TAGGED TAB

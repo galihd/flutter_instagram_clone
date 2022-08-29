@@ -15,6 +15,7 @@ class CreatePostIndex extends GetView<GalleryPickerController> {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () {
+                controller.videoPlayerController.pause();
                 Navigator.pop(context);
               },
             ),
@@ -23,6 +24,7 @@ class CreatePostIndex extends GetView<GalleryPickerController> {
               controller.selectedFiles.isNotEmpty
                   ? IconButton(
                       onPressed: () {
+                        controller.videoPlayerController.pause();
                         Navigator.pushNamed(context, MainStackRoutes.createPostDetails);
                       },
                       icon: const Icon(

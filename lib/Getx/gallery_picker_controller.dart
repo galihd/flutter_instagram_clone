@@ -1,17 +1,43 @@
 import 'package:get/get.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:video_player/video_player.dart';
 
 class GalleryPickerController extends GetxController {
   final assets = <AssetEntity>[].obs;
   final previewFile = Rxn<AssetEntity>();
   final allowMutiple = false.obs;
   final selectedFiles = <AssetEntity>[].obs;
+  late VideoPlayerController videoPlayerController = VideoPlayerController.network("");
 
   @override
   void onInit() {
     // TODO: implement onInit
     loadAllMediaFiles();
+    ever(previewFile, previewFileCallback);
+
     super.onInit();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    videoPlayerController.dispose();
+    super.dispose();
+  }
+
+  void previewFileCallback(AssetEntity? callbackValue) {
+    if (callbackValue != null) {
+      if (videoPlayerController.value.isInitialized) {
+        videoPlayerController.dispose();
+      }
+      if (callbackValue.type == AssetType.video) {
+        callbackValue.file.then((value) {
+          videoPlayerController = VideoPlayerController.file(value!);
+          videoPlayerController.setLooping(true);
+          videoPlayerController.play();
+        });
+      }
+    }
   }
 
   void loadAllMediaFiles() async {

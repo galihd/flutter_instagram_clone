@@ -19,11 +19,23 @@ class CreatePostDetails extends GetView<GalleryPickerController> {
     void redirectToHome() => Navigator.of(context, rootNavigator: true).pushReplacementNamed("/");
     List<String> fileUrls =
         (await Future.wait(controller.selectedFiles.map((element) => element.file).toList())).map((e) => e!.path).toList();
-    Post postData = Post("", fileUrls, captionController.text, appUserController.appUser.value.appUserId,
-        appUserController.appUser.value, [], "", 0, 0, Timestamp.fromDate(DateTime.now()), PostType.post);
+    Post postData = Post(
+      "",
+      fileUrls,
+      captionController.text,
+      appUserController.appUser.value.appUserId,
+      appUserController.appUser.value,
+      [],
+      "",
+      0,
+      0,
+      Timestamp.fromDate(DateTime.now()),
+      controller.selectedFiles[0].type == AssetType.image ? PostType.post : PostType.reels,
+    );
 
     controller.selectFileHandler(controller.assets[0]);
     feedsController.createPostRequest(postData);
+    controller.videoPlayerController.dispose();
     redirectToHome();
   }
 

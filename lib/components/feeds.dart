@@ -7,59 +7,33 @@ import 'package:flutter_instagram_clone/Getx/feeds_controller.dart';
 import 'package:flutter_instagram_clone/app_navigations/constants.dart';
 import 'package:flutter_instagram_clone/components/expandable_text.dart';
 import 'package:flutter_instagram_clone/components/scale_animated.dart';
+import 'package:flutter_instagram_clone/components/video_player_widget.dart';
 import 'package:flutter_instagram_clone/models/comment.dart';
 import 'package:flutter_instagram_clone/models/like.dart';
 import 'package:flutter_instagram_clone/models/post.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
-class Feeds extends StatefulWidget {
-  const Feeds({Key? key, required this.postsList}) : super(key: key);
-
-  @override
-  State<Feeds> createState() => _FeedsState();
+class Feeds extends GetView<FeedsController> {
+  Feeds({Key? key, required this.postsList}) : super(key: key);
   final List<Post> postsList;
-}
-
-class _FeedsState extends State<Feeds> {
-  late Post currentView;
-  @override
-  void initState() {
-    currentView = widget.postsList[0];
-    super.initState();
-  }
-
-  void onVisibleHandler(VisibilityInfo info) {
-    if ((info.visibleFraction * 100) > 50) {
-      // setState(() {
-      //   currentView = widget.postsList[int.parse(info.key.toString())];
-      // });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 650,
-      child: ListView.builder(
-          itemCount: widget.postsList.length,
-          itemBuilder: (context, index) => VisibilityDetector(
-              key: Key(index.toString()),
-              onVisibilityChanged: onVisibleHandler,
-              child: PostItem(postData: widget.postsList[index]))),
+    return Expanded(
+      child: ListView(
+        children: postsList
+            .map((post) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PostHeader(postData: post),
+                    PostBody(postData: post),
+                  ],
+                ))
+            .toList(),
+      ),
     );
   }
-}
-
-class PostItem extends StatelessWidget {
-  const PostItem({Key? key, required this.postData}) : super(key: key);
-  final Post postData;
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [PostHeader(postData: postData), PostBody(postData: postData)],
-      );
 }
 
 class PostHeader extends StatelessWidget {
@@ -184,69 +158,54 @@ class PostHeader extends StatelessWidget {
       );
 }
 
-class PostBody extends StatefulWidget {
-  const PostBody({Key? key, required this.postData}) : super(key: key);
+class PostBody extends StatelessWidget {
+  PostBody({Key? key, required this.postData}) : super(key: key);
 
   final Post postData;
-  @override
-  State<PostBody> createState() => _PostBodyState();
-}
-
-class _PostBodyState extends State<PostBody> {
-  int activeIndex = 0;
-  late bool isAnimating = false;
-  Like? like;
+  ValueNotifier<int> activeIndex = ValueNotifier(0);
+  ValueNotifier<bool> isAnimating = ValueNotifier(false);
+  ValueNotifier<Like?> like = ValueNotifier(null);
+  late ValueNotifier<int> likesCount = ValueNotifier(postData.likesCount);
   final CarouselController carouselController = CarouselController();
   final userController = Get.find<AppUserController>();
-  void showComments() {
-    Navigator.pushNamed(context, MainStackRoutes.comments, arguments: widget.postData);
+  final feedsController = Get.find<FeedsController>();
+
+  void showComments(BuildContext context) {
+    Navigator.pushNamed(context, MainStackRoutes.comments, arguments: postData);
   }
 
   void likePost() async {
-    if (!isAnimating) {
-      if (like == null) {
-        widget.postData.likesCount++;
+    if (!isAnimating.value) {
+      if (like.value == null) {
+        postData.likesCount++;
         Like likeData = Like(
           '',
           TargetType.post,
-          widget.postData.postId,
-          widget.postData.appUserId,
-          widget.postData.appUser,
+          postData.postId,
+          postData.appUserId,
+          postData.appUser,
         );
-        likeData = await PostsRepo.addLike(likeData);
-        setState(() {
-          isAnimating = !isAnimating;
-          like = likeData;
-        });
+
+        like.value = await PostsRepo.addLike(likeData);
+        isAnimating.value = !isAnimating.value;
+        likesCount.value++;
       } else {
-        setState(() {
-          isAnimating = !isAnimating;
-        });
+        isAnimating.value = !isAnimating.value;
       }
     }
   }
 
   void disLikePost() async {
     // deleteLike
-    await PostsRepo.deleteLike(like!);
-    setState(() {
-      like = null;
-    });
-    widget.postData.likesCount--;
+    await PostsRepo.deleteLike(like.value!);
+    like.value = null;
+    likesCount.value--;
   }
 
-  Future<void> getLike() =>
-      PostsRepo.findLikeByTargetIdAndUserId(widget.postData.postId, userController.appUser.value.appUserId)
-          .then((value) => setState(() => like = value));
+  Future<void> getLike() => PostsRepo.findLikeByTargetIdAndUserId(postData.postId, userController.appUser.value.appUserId)
+      .then((value) => like.value = value);
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    getLike();
-    super.initState();
-  }
-
-  DateTime postCreatedDate() => DateTime.fromMillisecondsSinceEpoch(widget.postData.createdAt.millisecondsSinceEpoch);
+  DateTime postCreatedDate() => DateTime.fromMillisecondsSinceEpoch(postData.createdAt.millisecondsSinceEpoch);
   String formattedDate() => (DateTime.now().millisecondsSinceEpoch - postCreatedDate().millisecondsSinceEpoch) >
           (1000 * 60 * 60 * 24)
       ? (DateTime.now().millisecondsSinceEpoch - postCreatedDate().millisecondsSinceEpoch) < (1000 * 60 * 60 * 24 * 7)
@@ -262,46 +221,64 @@ class _PostBodyState extends State<PostBody> {
           Stack(
             alignment: Alignment.center,
             children: [
-              widget.postData.postType == PostType.post
-                  ? widget.postData.fileUrls.length > 1
-                      ? CarouselSlider(
-                          items: widget.postData.fileUrls
-                              .map((e) => GestureDetector(
-                                  onTap: () {},
-                                  onDoubleTap: likePost,
-                                  child: Image.network(
-                                    e,
-                                    fit: BoxFit.cover,
-                                  )))
-                              .toList(),
-                          carouselController: carouselController,
-                          options: CarouselOptions(
-                            viewportFraction: 1,
-                            height: 450,
-                            onPageChanged: (index, reason) => setState(() => activeIndex = index),
-                          ))
-                      : GestureDetector(
-                          onTap: () {},
-                          onDoubleTap: likePost,
-                          child: Image.network(
-                            widget.postData.fileUrls[0],
-                            height: 450,
-                            width: double.infinity,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                  : Text("show vedeos"),
-              Opacity(
-                opacity: isAnimating ? 1 : 0,
-                child: ScaleAnimatedComponent(
-                    isAnimatingState: isAnimating,
-                    endAnimationCallback: () => setState(() => isAnimating = false),
-                    child: const Icon(
-                      Icons.favorite,
-                      size: 100,
-                      color: Colors.white,
-                    )),
-              )
+              (postData.fileUrls.length > 1 && postData.postType == PostType.post)
+                  ? CarouselSlider(
+                      items: postData.fileUrls
+                          .map((e) => GestureDetector(
+                              onTap: () {},
+                              onDoubleTap: likePost,
+                              child: Image.network(
+                                e,
+                                fit: BoxFit.cover,
+                              )))
+                          .toList(),
+                      carouselController: carouselController,
+                      options: CarouselOptions(
+                        viewportFraction: 1,
+                        height: 450,
+                        onPageChanged: (index, reason) => activeIndex.value = index,
+                      ))
+                  : GestureDetector(
+                      onTap: () {},
+                      onDoubleTap: likePost,
+                      child: postData.postType == PostType.post
+                          ? Image.network(
+                              postData.fileUrls[0],
+                              height: 450,
+                              width: double.infinity,
+                              fit: BoxFit.contain,
+                            )
+                          : SizedBox(
+                              height: 450,
+                              child: VideoPlayerWidget(
+                                key: ValueKey(postData.postId),
+                                videoUrl: postData.fileUrls[0],
+                                autoPlay: true,
+                              )),
+                    ),
+              ValueListenableBuilder(
+                  valueListenable: isAnimating,
+                  builder: (context, bool value, child) => Opacity(
+                        opacity: value ? 1 : 0,
+                        child: ScaleAnimatedComponent(
+                            isAnimatingState: isAnimating.value,
+                            endAnimationCallback: () => isAnimating.value = false,
+                            child: const Icon(
+                              Icons.favorite,
+                              size: 100,
+                              color: Colors.white,
+                            )),
+                      )),
+              if (postData.postType == PostType.reels)
+                Obx(
+                  () => Positioned(
+                      bottom: 15,
+                      right: 15,
+                      child: IconButton(
+                        onPressed: feedsController.isMuted.toggle,
+                        icon: Icon(feedsController.isMuted.isTrue ? Icons.volume_up : Icons.volume_off),
+                      )),
+                )
             ],
           ),
           // POST DETAILS
@@ -319,13 +296,15 @@ class _PostBodyState extends State<PostBody> {
                       direction: Axis.horizontal,
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        IconButton(
-                          onPressed: like != null ? disLikePost : likePost,
-                          icon: like == null
-                              ? const Icon(Icons.favorite_border_outlined)
-                              : const Icon(Icons.favorite, color: Colors.red),
-                        ),
-                        IconButton(onPressed: showComments, icon: const Icon(CupertinoIcons.chat_bubble)),
+                        ValueListenableBuilder(
+                            valueListenable: like,
+                            builder: (context, value, child) => IconButton(
+                                  onPressed: like.value != null ? disLikePost : likePost,
+                                  icon: like.value == null
+                                      ? const Icon(Icons.favorite_border_outlined)
+                                      : const Icon(Icons.favorite, color: Colors.red),
+                                )),
+                        IconButton(onPressed: () => showComments, icon: const Icon(CupertinoIcons.chat_bubble)),
                         IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.paperplane)),
                       ],
                     ),
@@ -333,26 +312,30 @@ class _PostBodyState extends State<PostBody> {
                   ],
                 ),
                 // DOTS INDICATOR
-                if (widget.postData.fileUrls.length > 1)
+                if (postData.fileUrls.length > 1)
                   Positioned.fill(
                       child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.max,
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    children: widget.postData.fileUrls
+                    children: postData.fileUrls
                         .asMap()
                         .entries
-                        .map((entry) => Container(
-                              width: 10,
-                              height: 10,
-                              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 2.5),
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: (Theme.of(context).brightness == Brightness.dark
-                                          ? Colors.black54
-                                          : Colors.grey.shade900)
-                                      .withOpacity(activeIndex == entry.key ? 0.9 : 0.4)),
-                            ))
+                        .map(
+                          (entry) => ValueListenableBuilder(
+                              valueListenable: activeIndex,
+                              builder: (context, value, child) => Container(
+                                    width: 10,
+                                    height: 10,
+                                    margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 2.5),
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: (Theme.of(context).brightness == Brightness.dark
+                                                ? Colors.black54
+                                                : Colors.grey.shade900)
+                                            .withOpacity(activeIndex.value == entry.key ? 0.9 : 0.4)),
+                                  )),
+                        )
                         .toList(),
                   )),
               ],
@@ -360,21 +343,23 @@ class _PostBodyState extends State<PostBody> {
           ),
           // CAPTION DETAILS
           Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
-              child: Text('${widget.postData.likesCount} likes')),
-          ExpandableText(
-            text: widget.postData.caption!,
-            displayLength: 30,
-            leadingText: widget.postData.appUser!.username,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+            child: ValueListenableBuilder(
+                valueListenable: likesCount, builder: (context, int value, child) => Text('$value likes')),
           ),
-          if (widget.postData.commentCount > 0)
+          ExpandableText(
+            text: postData.caption!,
+            displayLength: 30,
+            leadingText: postData.appUser!.username,
+          ),
+          if (postData.commentCount > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
               child: GestureDetector(
-                onTap: showComments,
-                child: widget.postData.commentCount == 1
+                onTap: () => showComments,
+                child: postData.commentCount == 1
                     ? const Text("View 1 comment")
-                    : Text("View all ${widget.postData.commentCount} comments"),
+                    : Text("View all ${postData.commentCount} comments"),
               ),
             ),
 

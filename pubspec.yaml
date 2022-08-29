@@ -44,9 +44,10 @@ dependencies:
   email_validator: ^2.1.17
   visibility_detector: ^0.3.3
   carousel_slider: ^4.1.1
-  http: ^0.13.5
-  photo_manager: ^2.2.0
+  photo_manager: ^2.2.1
   intl: ^0.17.0
+  video_player: ^2.4.7
+  video_thumbnail: ^0.5.2
 
 dev_dependencies:
   flutter_test:
