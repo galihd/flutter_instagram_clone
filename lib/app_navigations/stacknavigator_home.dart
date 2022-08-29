@@ -4,6 +4,8 @@ import 'package:flutter_instagram_clone/app_navigations/constants.dart';
 import 'package:flutter_instagram_clone/models/post.dart';
 import 'package:flutter_instagram_clone/screens/PostCreator/createpost_details.dart';
 import 'package:flutter_instagram_clone/screens/PostCreator/createpost_index.dart';
+import 'package:flutter_instagram_clone/screens/Profile/profile_post_screen.dart';
+import 'package:flutter_instagram_clone/screens/Profile/profile_relation_screen.dart';
 import 'package:flutter_instagram_clone/screens/comment_screen.dart';
 import 'package:flutter_instagram_clone/screens/home_screen.dart';
 import 'package:flutter_instagram_clone/screens/message_screen.dart';
@@ -18,7 +20,6 @@ class HomeStack extends GetView<NavigationController> {
   Widget build(BuildContext context) {
     return Navigator(
       key: navigatorKey,
-      initialRoute: MainStackRoutes.home,
       onGenerateRoute: (settings) {
         return PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) {
@@ -33,6 +34,14 @@ class HomeStack extends GetView<NavigationController> {
                   appUserId: appUserId,
                   showActions: false,
                 );
+
+              case MainStackRoutes.profilePost:
+                var args = settings.arguments as PostFeedsArguments;
+                return ProfilePostScreen(userPosts: args.userPosts);
+
+              case MainStackRoutes.profileRelation:
+                var args = settings.arguments as ProfileRelationArguments;
+                return ProfileRelationScreen(args: args);
 
               case MainStackRoutes.comments:
                 Post postData = settings.arguments as Post;

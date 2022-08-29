@@ -5,6 +5,8 @@ import 'package:flutter_instagram_clone/app_navigations/constants.dart';
 import 'package:flutter_instagram_clone/screens/PostCreator/createpost_details.dart';
 import 'package:flutter_instagram_clone/screens/PostCreator/createpost_index.dart';
 import 'package:flutter_instagram_clone/screens/Profile/profile_edit_screen.dart';
+import 'package:flutter_instagram_clone/screens/Profile/profile_post_screen.dart';
+import 'package:flutter_instagram_clone/screens/Profile/profile_relation_screen.dart';
 import 'package:flutter_instagram_clone/screens/Profile/profile_screen.dart';
 import 'package:get/get.dart';
 
@@ -16,23 +18,29 @@ class ProfileStack extends GetView<NavigationController> {
   Widget build(BuildContext context) {
     return Navigator(
       key: navigatorKey,
-      initialRoute: MainStackRoutes.profile,
       onGenerateRoute: (settings) => PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) {
           controller.profileStackRoute.value = settings.name!;
           switch (settings.name) {
             case MainStackRoutes.profile:
-              {
-                return ProfileScreen(
-                  appUserId: userController.appUser.value.appUserId,
-                  showActions: true,
-                );
-              }
+              return ProfileScreen(
+                appUserId: (settings.arguments as String?) ?? userController.appUser.value.appUserId,
+                showActions: true,
+              );
+
             case MainStackRoutes.profileEdit:
               return const ProfileEditScreen();
 
             case MainStackRoutes.profileEditGallery:
               return const ProfileEditGalleryScreen();
+
+            case MainStackRoutes.profilePost:
+              var args = settings.arguments as PostFeedsArguments;
+              return ProfilePostScreen(userPosts: args.userPosts);
+
+            case MainStackRoutes.profileRelation:
+              var args = settings.arguments as ProfileRelationArguments;
+              return ProfileRelationScreen(args: args);
 
             case MainStackRoutes.createPost:
               return const CreatePostIndex();

@@ -54,8 +54,6 @@ class _MainNavigationState extends State<MainNavigation> {
         //shouldpop=true;
         return false;
       }
-    } else {
-      print("not on first route");
     }
 
     return isOnTabFirstRoute;
